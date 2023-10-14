@@ -1,0 +1,11 @@
+---
+title: "Homework 3"
+author: "Joshua Carpenter"
+date: "2023-10-14"
+output: github_document
+---
+
+```{r setup, results='hide', message=FALSE, warning=FALSE}
+library(p8105.datasets)
+data("instacart")
+```
