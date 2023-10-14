@@ -6,6 +6,70 @@ output: github_document
 ---
 
 ```{r setup, results='hide', message=FALSE, warning=FALSE}
+library(tidyverse)
 library(p8105.datasets)
+library(scales)
+library(knitr)
 data("instacart")
 ```
+
+## Problem 1
+The `instacart` dataset contains order history from the online shopping service Instacart in 2017. The dataset has one row per item per order and contains info about when the order was placed, whether the customer had bought the item before, and which aisle the item came from. Here are a few rows from the dataset:
+
+```{r echo=FALSE}
+instacart %>%
+  filter(aisle_id <= 6) %>%
+  slice_head(n = 1, by = aisle) %>%
+  kable()
+```
+
+I just realized this problem is worth zero points, so I'm not going to put any more work into it, but here are some nice tables and figures:
+```{r fig.asp=1.8, message=FALSE}
+# Bar chart
+instacart %>%
+  group_by(aisle_id, aisle) %>%
+  count() %>%
+  arrange(n) %>%
+  filter(n >= 10000) %>%
+  ggplot(mapping = aes(x = n, y = factor(aisle, levels = aisle))) +
+  geom_col(width = 0.7, fill = '#ea9905') +
+  geom_text(aes(label = comma(n)), hjust = -0.3) +
+  theme_void() +
+  theme(axis.text.y = element_text(hjust = 0, 
+                                   margin = margin(r = 10, l = 10))) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.2))) +
+  xlab("") +
+  ylab("") +
+  ggtitle("Number of Items Ordered", "From Aisles with at Least 10,000 Orders")
+```
+
+#### Top Ordered Items from Select Aisles
+```{r message=FALSE}
+# Table
+instacart %>%
+  group_by(aisle_id, aisle, product_id, product_name) %>%
+  filter(aisle %in% c("baking ingredients", "dog food care", 
+                      "packaged vegetables fruits")) %>%
+  count() %>%
+  ungroup() %>%
+  slice_max(n, by = aisle_id, n = 3) %>%
+  select(-ends_with("_id")) %>%
+  kable(col.names = c("Aisle", "Product", "Number Ordered"))
+```
+
+#### Average Time of Day (hours since midnight) for Orders of Coffee Ice Cream and Pink Lady Apples
+```{r message=FALSE}
+# Assuming that 0 is Sunday, since the data description doesn't specify
+dow <- c("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", 
+         "Friday", "Saturday")
+
+instacart %>%
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+  group_by(product_name, order_dow) %>%
+  summarise(mean = round(mean(order_hour_of_day), 1)) %>%
+  mutate(order_dow = dow[order_dow + 1]) %>%
+  pivot_wider(names_from = product_name, values_from = mean) %>%
+  rename(`Day of Week` = order_dow) %>%
+  kable()
+```
+
