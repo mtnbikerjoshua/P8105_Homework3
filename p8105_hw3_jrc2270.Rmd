@@ -126,3 +126,64 @@ brfss_clean %>%
   ylab("Average Value for NY")
 ```
 
+## Problem 3
+```{r}
+dm <- 
+  read_csv("Data/nhanes_covar.csv", skip = 4) %>%
+  clean_names() %>%
+  mutate(sex = factor(sex, labels = c("Male", "Female")),
+         education = factor(education, ordered = TRUE,
+                            labels = c("Less than high school",
+                                                  "High school equivalent",
+                                                  "More than high school"))) %>%
+  filter(age >= 21)
+accel <- 
+  read_csv("Data/nhanes_accel.csv") %>%
+  pivot_longer(starts_with("min"), names_to = "min", values_to = "accel") %>%
+  rename(seqn = SEQN) %>%
+  mutate(min = parse_integer(substring(min, 4))) %>%
+  right_join(dm, by = "seqn") %>%
+  select(seqn, sex, age, bmi, education, min, accel)
+```
+
+Age seems to have a fairly wide spread. We have a higher proportion of people who have completed more than high school compared to the other education categories. Demographics are similar between genders.
+```{r}
+dm %>%
+  group_by(sex, education) %>%
+  count() %>%
+  mutate(education = replace_na(as.character(education), "Unknown")) %>%
+  pivot_wider(names_from = sex, values_from = n) %>%
+  rename(Education = education) %>%
+  kable()
+
+ggplot(dm, mapping = aes(x = age)) +
+  geom_histogram(bins = 15) +
+  facet_grid(~sex) +
+  xlab("Age") +
+  ylab("Count")
+```
+
+More education is associated with staying more physically active later in life. In general, females are more active than males, except for less educated females over 50 years old.
+```{r fig.asp=2}
+accel %>%
+  group_by(seqn, sex, age, bmi, education) %>%
+  summarise(accel = sum(accel)) %>%
+  ggplot(mapping = aes(x = age, y = accel, color = sex)) +
+  geom_point() +
+  geom_smooth(se = FALSE) +
+  facet_grid(rows = vars(education)) +
+  labs(x = "Age", y = "Movement", color = "Sex")
+```
+
+There are a lot of high outliers for the highest education group, including some in the evening that are cut off in order to see the trend better. That pattern seems indicative of "working out" or intentional exercise. The lowest education group seems to have heaveir physical activity in the morning - potentially indicative of a physically active job.
+```{r fig.asp=2}
+accel %>%
+  ggplot(mapping = aes(x = min, y = accel, color = sex)) +
+  geom_point(alpha = 0.3, size = 0.5) +
+  geom_smooth(se = FALSE) +
+  ylim(c(0, 50)) +
+  facet_grid(rows = vars(education)) +
+  labs(x = "Minute", y = "Movement", color = "Sex") +
+  theme_bw()
+```
+
