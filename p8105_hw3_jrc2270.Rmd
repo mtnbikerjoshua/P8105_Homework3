@@ -10,7 +10,9 @@ library(tidyverse)
 library(p8105.datasets)
 library(scales)
 library(knitr)
+library(janitor)
 data("instacart")
+data("brfss_smart2010")
 ```
 
 ## Problem 1
@@ -71,5 +73,56 @@ instacart %>%
   pivot_wider(names_from = product_name, values_from = mean) %>%
   rename(`Day of Week` = order_dow) %>%
   kable()
+```
+
+## Problem 2
+```{r message=FALSE}
+brfss_clean <- brfss_smart2010 %>%
+  clean_names() %>%
+  mutate(response = factor(response, 
+                           levels = c("Poor", "Fair", "Good", 
+                                      "Very good", "Excellent"),
+                           ordered = TRUE)) %>%
+  filter(topic == "Overall Health", !is.na(response)) %>%
+  rename(state = locationabbr, location = locationdesc)
+```
+
+In 2010, there were quite a few more states with more than 7 locations than in 2002. The only state that had more than 7 locations in 2002 but didn't by 2010 was Connecticut.
+```{r}
+brfss_clean %>%
+  group_by(year, state) %>%
+  summarise(n = n_distinct(location)) %>%
+  filter(year %in% c(2002, 2010), n >= 7) %>%
+  pivot_wider(names_from = year, values_from = n, id_cols = state) %>%
+  kable()
+```
+
+This spaghetti plot shows us that there aren't a lot of clear patterns for average value over time and that there aren't many outlying state averages over this period of time.
+```{r}
+brfss_state_avg <- brfss_clean %>%
+  filter(response == "Excellent") %>%
+  group_by(year, state) %>%
+  summarise(avg_val = mean(data_value, na.rm = TRUE))
+  
+ggplot(brfss_state_avg, mapping = aes(x = year, y = avg_val, group = state)) +
+  geom_line() +
+  theme_bw() +
+  scale_x_continuous(expand = expansion(0)) +
+  xlab("Year") +
+  ylab("Average Value by State")
+```
+
+Between 2006 and 2010 there seems to be a slight rightward shift in the distribution. In 2010, quite a few more people answered "Very good" compared to 2006.
+```{r}
+brfss_clean %>%
+  filter(year %in% c(2006, 2010), state == "NY") %>%
+  group_by(year, response) %>%
+  summarise(mean = mean(data_value)) %>%
+  ggplot(aes(x = response, y =  mean)) +
+  geom_col() +
+  facet_grid(~year) +
+  theme_bw() +
+  xlab("Response") +
+  ylab("Average Value for NY")
 ```
 
